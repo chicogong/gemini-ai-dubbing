@@ -18,6 +18,8 @@ const App: React.FC = () => {
     error: null,
   });
 
+  const generateId = () => Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+
   const handleGenerate = async () => {
     if (!text.trim()) return;
 
@@ -28,7 +30,7 @@ const App: React.FC = () => {
       const blobUrl = URL.createObjectURL(blob);
 
       const newItem: GeneratedAudio = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         text: text.trim(),
         voice: selectedVoice,
         timestamp: Date.now(),
@@ -40,6 +42,7 @@ const App: React.FC = () => {
       // Optional: switch to history tab or show success toast
       // setActiveTab('history'); 
     } catch (error: any) {
+      console.error(error);
       setStatus({ 
         isGenerating: false, 
         error: error.message || "生成失败。请检查您的网络连接或 API Key。" 

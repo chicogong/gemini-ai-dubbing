@@ -10,7 +10,6 @@ export function base64ToBytes(base64: string): Uint8Array {
 }
 
 // Convert Raw PCM (Float32 or Int16) to WAV file format (Blob)
-// Gemini API returns raw PCM without headers. Browsers need WAV headers to play/download easily.
 export function pcmToWavBlob(pcmData: Int16Array, sampleRate: number): Blob {
   const numChannels = 1;
   const byteRate = sampleRate * numChannels * 2; // 2 bytes per sample (16-bit)
@@ -55,5 +54,10 @@ function writeString(view: DataView, offset: number, string: string) {
 
 // Helper to convert Uint8Array (bytes) -> Int16Array (PCM)
 export function bytesToInt16(bytes: Uint8Array): Int16Array {
+  // Ensure the byte length is even, otherwise Int16Array will throw
+  if (bytes.byteLength % 2 !== 0) {
+    // If odd, slice off the last byte or pad (slicing is safer for audio tail)
+    return new Int16Array(bytes.buffer, 0, (bytes.byteLength - 1) / 2);
+  }
   return new Int16Array(bytes.buffer);
 }

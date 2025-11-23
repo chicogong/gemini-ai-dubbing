@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { VoiceName } from '../types';
 import { SAMPLE_RATE } from '../constants';
 import { base64ToBytes, bytesToInt16, pcmToWavBlob } from '../utils/audioUtils';
@@ -34,7 +34,7 @@ export const optimizeScript = async (
       ],
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.7, // 稍微有点创造力，但也保持准确
+        temperature: 0.7,
       }
     });
 
@@ -57,11 +57,13 @@ export const generateSpeech = async (
   const ai = getClient();
   
   try {
+    console.log(`Starting generation for voice: ${voiceName}`);
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: text }] }],
       config: {
-        responseModalities: [Modality.AUDIO],
+        // Use string literal 'AUDIO' and cast to any to avoid runtime Enum issues in some environments
+        responseModalities: ['AUDIO' as any],
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: { voiceName: voiceName },
@@ -73,7 +75,8 @@ export const generateSpeech = async (
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 
     if (!base64Audio) {
-      throw new Error("未收到 Gemini API 返回的音频数据。");
+      console.error("API Response structure:", response);
+      throw new Error("API 请求成功，但未返回音频数据。");
     }
 
     // Decode Base64 to Raw Bytes
