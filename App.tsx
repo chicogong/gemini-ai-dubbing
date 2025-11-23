@@ -6,17 +6,19 @@ import ScriptEditor from './components/ScriptEditor';
 import { VoiceName, GeneratedAudio, GenerationState } from './types';
 import { DEFAULT_VOICE } from './constants';
 import { generateSpeech } from './services/geminiService';
-import { Wand2, AlertCircle, History, Mic2, Download } from 'lucide-react';
+import { Wand2, AlertCircle, History, Mic2, Sparkles, X } from 'lucide-react';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'create' | 'history'>('create');
   const [text, setText] = useState('');
   const [selectedVoice, setSelectedVoice] = useState<VoiceName>(DEFAULT_VOICE);
   const [history, setHistory] = useState<GeneratedAudio[]>([]);
+  const [latestAudio, setLatestAudio] = useState<GeneratedAudio | null>(null);
   const [status, setStatus] = useState<GenerationState>({
     isGenerating: false,
     error: null,
   });
+  const [loadingText, setLoadingText] = useState("AI 正在合成...");
 
   const generateId = () => Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
 
@@ -24,6 +26,21 @@ const App: React.FC = () => {
     if (!text.trim()) return;
 
     setStatus({ isGenerating: true, error: null });
+    setLatestAudio(null); // Clear previous result so user notices the new one
+    
+    // Dynamic loading text logic to make the wait feel shorter
+    setLoadingText("正在连接大脑...");
+    const loadingMessages = [
+        "正在构建声纹...",
+        "正在合成语音...",
+        "正在调整语调...",
+        "正在进行后期处理..."
+    ];
+    let msgIndex = 0;
+    const intervalId = setInterval(() => {
+        setLoadingText(loadingMessages[msgIndex]);
+        msgIndex = (msgIndex + 1) % loadingMessages.length;
+    }, 1500);
 
     try {
       const { blob, duration } = await generateSpeech(text, selectedVoice);
@@ -39,8 +56,8 @@ const App: React.FC = () => {
       };
 
       setHistory((prev) => [newItem, ...prev]);
-      // Optional: switch to history tab or show success toast
-      // setActiveTab('history'); 
+      setLatestAudio(newItem); // Show immediately
+      
     } catch (error: any) {
       console.error(error);
       setStatus({ 
@@ -48,6 +65,7 @@ const App: React.FC = () => {
         error: error.message || "生成失败。请检查您的网络连接或 API Key。" 
       });
     } finally {
+      clearInterval(intervalId);
       setStatus(prev => ({ ...prev, isGenerating: false }));
     }
   };
@@ -60,6 +78,9 @@ const App: React.FC = () => {
         }
         return prev.filter((item) => item.id !== id);
     });
+    if (latestAudio?.id === id) {
+        setLatestAudio(null);
+    }
   };
 
   const maxChars = 2000;
@@ -116,7 +137,7 @@ const App: React.FC = () => {
                           配音文案工作室
                         </label>
                         {status.error && (
-                          <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 px-3 py-1 rounded-full border border-red-200">
+                          <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 px-3 py-1 rounded-full border border-red-200 animate-in fade-in slide-in-from-right-5">
                             <AlertCircle className="w-3 h-3" />
                             {status.error}
                           </div>
@@ -147,7 +168,7 @@ const App: React.FC = () => {
                           {status.isGenerating ? (
                             <>
                               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                              <span>AI 正在合成...</span>
+                              <span className="min-w-[100px] text-left">{loadingText}</span>
                             </>
                           ) : (
                             <>
@@ -158,6 +179,27 @@ const App: React.FC = () => {
                         </button>
                      </div>
                 </section>
+
+                {/* LATEST GENERATED AUDIO - IMMEDIATE PLAYBACK */}
+                {latestAudio && !status.isGenerating && (
+                    <div className="bg-indigo-50/50 border-2 border-indigo-100 rounded-2xl p-4 mt-6 animate-in fade-in zoom-in-95 duration-500">
+                         <div className="flex items-center justify-between mb-3 px-1">
+                            <span className="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                                <span className="bg-amber-400 p-1 rounded-md text-white shadow-sm shadow-amber-200">
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                </span>
+                                生成完成！点击下方播放
+                            </span>
+                            <button 
+                                onClick={() => setLatestAudio(null)} 
+                                className="text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 p-1 rounded-full transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <HistoryItem item={latestAudio} onDelete={(id) => handleDelete(id)} />
+                    </div>
+                )}
             </div>
         )}
 
