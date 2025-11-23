@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Modality } from "@google/genai";
 import { VoiceName } from '../types';
 import { SAMPLE_RATE } from '../constants';
 import { base64ToBytes, bytesToInt16, pcmToWavBlob } from '../utils/audioUtils';
@@ -58,12 +58,17 @@ export const generateSpeech = async (
   
   try {
     console.log(`Starting generation for voice: ${voiceName}`);
+    
+    // Ensure text is not empty
+    if (!text || !text.trim()) {
+      throw new Error("生成文本不能为空");
+    }
+
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: text }] }],
       config: {
-        // Use string literal 'AUDIO' and cast to any to avoid runtime Enum issues in some environments
-        responseModalities: ['AUDIO' as any],
+        responseModalities: [Modality.AUDIO], // Use the Enum strictly
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: { voiceName: voiceName },
@@ -72,11 +77,25 @@ export const generateSpeech = async (
       },
     });
 
+    // Check for inline data (audio)
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 
     if (!base64Audio) {
-      console.error("API Response structure:", response);
-      throw new Error("API 请求成功，但未返回音频数据。");
+      // Try to find if there is a text refusal/error message from the model
+      const textPart = response.candidates?.[0]?.content?.parts?.[0]?.text;
+      const finishReason = response.candidates?.[0]?.finishReason;
+      
+      console.error("API Response structure (No Audio):", response);
+      
+      if (finishReason === 'SAFETY') {
+        throw new Error("生成内容因安全原因被拦截。请修改文案后重试。");
+      }
+      
+      if (textPart) {
+        throw new Error(`生成失败，模型返回了文本而非音频: "${textPart.slice(0, 50)}..."`);
+      }
+
+      throw new Error("API 请求成功，但未返回音频数据。可能是暂时的服务问题。");
     }
 
     // Decode Base64 to Raw Bytes
@@ -94,8 +113,9 @@ export const generateSpeech = async (
 
     return { blob: wavBlob, duration };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini TTS Error:", error);
-    throw error;
+    // Rethrow with a user-friendly message if possible
+    throw new Error(error.message || "语音生成服务发生未知错误");
   }
 };

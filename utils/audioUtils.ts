@@ -1,6 +1,8 @@
 // Utility to convert Base64 string to Uint8Array
 export function base64ToBytes(base64: string): Uint8Array {
-  const binaryString = atob(base64);
+  // Remove any whitespace that might have crept in
+  const cleanBase64 = base64.replace(/\s/g, '');
+  const binaryString = atob(cleanBase64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
@@ -54,10 +56,19 @@ function writeString(view: DataView, offset: number, string: string) {
 
 // Helper to convert Uint8Array (bytes) -> Int16Array (PCM)
 export function bytesToInt16(bytes: Uint8Array): Int16Array {
-  // Ensure the byte length is even, otherwise Int16Array will throw
-  if (bytes.byteLength % 2 !== 0) {
-    // If odd, slice off the last byte or pad (slicing is safer for audio tail)
-    return new Int16Array(bytes.buffer, 0, (bytes.byteLength - 1) / 2);
+  // Check if bytes.buffer is valid
+  if (!bytes.buffer) {
+    throw new Error("Invalid audio buffer received");
   }
-  return new Int16Array(bytes.buffer);
+
+  // Handle odd byte length by slicing off the last byte
+  // Int16Array requires a buffer length that is a multiple of 2
+  const length = bytes.length;
+  const evenLength = length % 2 === 0 ? length : length - 1;
+  
+  // Create a view on the existing buffer instead of copying if possible, 
+  // but creating a new Int16Array from the buffer is standard.
+  // Note: we must use the byteOffset and byteLength correctly.
+  
+  return new Int16Array(bytes.buffer, bytes.byteOffset, evenLength / 2);
 }
