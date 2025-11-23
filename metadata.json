@@ -1,0 +1,5 @@
+{
+  "name": "VoxGen Pro",
+  "description": "专业的 AI 配音与合成应用，使用 Gemini 2.5 TTS 模型。支持多种声音角色，生成逼真的人声语音。",
+  "requestFramePermissions": []
+}
