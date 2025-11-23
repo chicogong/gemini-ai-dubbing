@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import Header from './components/Header';
 import VoiceSelector from './components/VoiceSelector';
 import HistoryItem from './components/HistoryItem';
+import ScriptEditor from './components/ScriptEditor';
 import { VoiceName, GeneratedAudio, GenerationState } from './types';
 import { DEFAULT_VOICE } from './constants';
 import { generateSpeech } from './services/geminiService';
-import { Wand2, AlertCircle, History } from 'lucide-react';
+import { Wand2, AlertCircle, History, Mic2, Download } from 'lucide-react';
 
 const App: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'create' | 'history'>('create');
   const [text, setText] = useState('');
   const [selectedVoice, setSelectedVoice] = useState<VoiceName>(DEFAULT_VOICE);
   const [history, setHistory] = useState<GeneratedAudio[]>([]);
@@ -35,6 +37,8 @@ const App: React.FC = () => {
       };
 
       setHistory((prev) => [newItem, ...prev]);
+      // Optional: switch to history tab or show success toast
+      // setActiveTab('history'); 
     } catch (error: any) {
       setStatus({ 
         isGenerating: false, 
@@ -55,116 +59,151 @@ const App: React.FC = () => {
     });
   };
 
-  const charCount = text.length;
-  const maxChars = 1000;
+  const maxChars = 2000;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
       <Header />
 
-      <main className="max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <main className="max-w-5xl mx-auto p-4 md:p-6 pb-20">
         
-        {/* Left Column: Input & Controls */}
-        <div className="lg:col-span-8 space-y-6">
-          
-          <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl">
-            <VoiceSelector 
-              selectedVoice={selectedVoice} 
-              onSelectVoice={setSelectedVoice}
-              disabled={status.isGenerating}
-            />
-
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                配音文案 / 脚本
-              </label>
-              <div className="relative">
-                <textarea
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="在此输入您想要转换的文字内容..."
-                  disabled={status.isGenerating}
-                  maxLength={maxChars}
-                  className="w-full h-48 bg-slate-950 border border-slate-700 rounded-xl p-4 text-base leading-relaxed text-slate-100 placeholder-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none transition-all"
-                />
-                <div className="absolute bottom-4 right-4 text-xs text-slate-500 bg-slate-900/80 px-2 py-1 rounded">
-                  {charCount} / {maxChars}
-                </div>
-              </div>
+        {/* Tabs Navigation */}
+        <div className="flex justify-center mb-8">
+            <div className="bg-slate-200/50 p-1 rounded-xl inline-flex shadow-inner">
+                <button 
+                    onClick={() => setActiveTab('create')}
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'create' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    <Mic2 className="w-4 h-4" />
+                    配音创作
+                </button>
+                <button 
+                    onClick={() => setActiveTab('history')}
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'history' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    <History className="w-4 h-4" />
+                    作品库
+                    {history.length > 0 && (
+                        <span className={`text-[10px] px-1.5 rounded-full ${activeTab === 'history' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-300 text-slate-600'}`}>
+                            {history.length}
+                        </span>
+                    )}
+                </button>
             </div>
+        </div>
 
-            {status.error && (
-              <div className="mt-4 p-4 bg-red-900/20 border border-red-800/50 rounded-lg flex items-start gap-3 text-red-300 text-sm">
-                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <p>{status.error}</p>
-              </div>
-            )}
+        {/* Tab Content: CREATE */}
+        {activeTab === 'create' && (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+                
+                {/* Voice Selection */}
+                <section>
+                    <VoiceSelector 
+                        selectedVoice={selectedVoice} 
+                        onSelectVoice={setSelectedVoice}
+                        disabled={status.isGenerating}
+                    />
+                </section>
 
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={handleGenerate}
-                disabled={status.isGenerating || !text.trim()}
-                className={`
-                  flex items-center gap-2 px-8 py-3 rounded-lg font-semibold text-white shadow-lg transition-all
-                  ${status.isGenerating || !text.trim()
-                    ? 'bg-slate-700 cursor-not-allowed opacity-50' 
-                    : 'bg-indigo-600 hover:bg-indigo-500 hover:shadow-indigo-500/25 active:transform active:scale-95'
-                  }
-                `}
-              >
-                {status.isGenerating ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>生成中...</span>
-                  </>
+                {/* Editor Section */}
+                <section className="flex flex-col gap-4">
+                     <div className="flex items-center justify-between px-1">
+                        <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <PenToolIcon className="w-4 h-4 text-indigo-600" />
+                          配音文案工作室
+                        </label>
+                        {status.error && (
+                          <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 px-3 py-1 rounded-full border border-red-200">
+                            <AlertCircle className="w-3 h-3" />
+                            {status.error}
+                          </div>
+                        )}
+                     </div>
+                     
+                     <div className="flex-grow">
+                        <ScriptEditor 
+                           text={text} 
+                           setText={setText} 
+                           disabled={status.isGenerating} 
+                           maxChars={maxChars}
+                        />
+                     </div>
+
+                     <div className="flex justify-end pt-2">
+                        <button
+                          onClick={handleGenerate}
+                          disabled={status.isGenerating || !text.trim()}
+                          className={`
+                            flex items-center gap-2 px-8 py-3.5 rounded-xl font-bold text-white shadow-lg shadow-indigo-200 transition-all duration-300
+                            ${status.isGenerating || !text.trim()
+                              ? 'bg-slate-300 cursor-not-allowed text-slate-500 shadow-none' 
+                              : 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transform hover:-translate-y-1'
+                            }
+                          `}
+                        >
+                          {status.isGenerating ? (
+                            <>
+                              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>AI 正在合成...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Wand2 className="w-5 h-5" />
+                              <span>立即生成语音</span>
+                            </>
+                          )}
+                        </button>
+                     </div>
+                </section>
+            </div>
+        )}
+
+        {/* Tab Content: HISTORY */}
+        {activeTab === 'history' && (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                 {history.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center text-center p-16 border-2 border-dashed border-slate-200 rounded-2xl bg-white/50">
+                    <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                        <History className="w-10 h-10 text-slate-300" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-700">暂无配音作品</h3>
+                    <p className="text-slate-500 text-sm mt-2 max-w-xs">
+                      切换到“配音创作”标签页，输入文案并点击生成，您的作品将显示在这里。
+                    </p>
+                    <button 
+                        onClick={() => setActiveTab('create')}
+                        className="mt-6 text-indigo-600 font-semibold text-sm hover:underline"
+                    >
+                        去创作 &rarr;
+                    </button>
+                  </div>
                 ) : (
-                  <>
-                    <Wand2 className="w-5 h-5" />
-                    <span>生成语音</span>
-                  </>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {history.map((item) => (
+                      <HistoryItem 
+                        key={item.id} 
+                        item={item} 
+                        onDelete={handleDelete} 
+                      />
+                    ))}
+                  </div>
                 )}
-              </button>
             </div>
-          </div>
-          
-          <div className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl text-center text-slate-500 text-sm">
-             <p>由 Google Gemini 2.5 Flash TTS 模型驱动。生成 24kHz 高保真 WAV 音频。</p>
-          </div>
-        </div>
-
-        {/* Right Column: History */}
-        <div className="lg:col-span-4 space-y-4">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <History className="w-5 h-5 text-indigo-400" />
-              生成历史
-            </h2>
-            <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded-full">
-              {history.length}
-            </span>
-          </div>
-
-          <div className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
-            {history.length === 0 ? (
-              <div className="text-center py-12 border-2 border-dashed border-slate-800 rounded-xl">
-                <p className="text-slate-500">暂无生成记录</p>
-                <p className="text-slate-600 text-sm mt-1">请选择声音并输入文案开始制作。</p>
-              </div>
-            ) : (
-              history.map((item) => (
-                <HistoryItem 
-                  key={item.id} 
-                  item={item} 
-                  onDelete={handleDelete} 
-                />
-              ))
-            )}
-          </div>
-        </div>
+        )}
 
       </main>
+      
+      {/* Footer */}
+      <footer className="py-6 text-center text-xs text-slate-400 border-t border-slate-200 bg-white">
+          VoxGen Pro Studio • Powered by Gemini 2.5
+      </footer>
     </div>
   );
 };
+
+// Helper Icon for this file
+const PenToolIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19 7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+);
 
 export default App;

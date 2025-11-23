@@ -12,6 +12,44 @@ const getClient = () => {
   return new GoogleGenAI({ apiKey });
 };
 
+/**
+ * 使用 LLM (Gemini 2.5 Flash) 优化或生成脚本
+ */
+export const optimizeScript = async (
+  currentText: string,
+  systemInstruction: string,
+  userPrompt: string
+): Promise<string> => {
+  const ai = getClient();
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: `原文内容：\n"${currentText}"\n\n任务要求：${userPrompt}` }
+          ]
+        }
+      ],
+      config: {
+        systemInstruction: systemInstruction,
+        temperature: 0.7, // 稍微有点创造力，但也保持准确
+      }
+    });
+
+    const result = response.text;
+    if (!result) throw new Error("AI 未返回内容");
+    return result.trim();
+  } catch (error) {
+    console.error("Gemini LLM Error:", error);
+    throw error;
+  }
+};
+
+/**
+ * 使用 TTS 模型生成语音
+ */
 export const generateSpeech = async (
   text: string,
   voiceName: VoiceName

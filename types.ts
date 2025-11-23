@@ -1,3 +1,5 @@
+import React from 'react';
+
 export enum VoiceName {
   Puck = 'Puck',
   Charon = 'Charon',
@@ -25,4 +27,13 @@ export interface GeneratedAudio {
 export interface GenerationState {
   isGenerating: boolean;
   error: string | null;
+}
+
+export type AIActionType = 'polish' | 'expand' | 'summarize' | 'translate' | 'fix' | 'style_promo' | 'style_story';
+
+export interface AIAction {
+  id: AIActionType;
+  label: string;
+  icon?: React.ReactNode;
+  prompt: string;
 }
